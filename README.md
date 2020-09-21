@@ -1,5 +1,5 @@
 # cron-expression
-Calculate the next  run date a CRON expression (计算crontab表达式下一个执行日期)
+Calculate the next run date a CRON expression. Support years and seconds (计算crontab表达式下一个执行日期，支持年和秒)
 
 Installing
 ==========

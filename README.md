@@ -7,7 +7,7 @@ Installing
 Add the dependency to your project:
 
 ```bash
-composer require dragonmantank/cron-expression
+composer require han-xuefeng/cron-expression
 ```
 
 Usage
@@ -20,7 +20,7 @@ require_once '/vendor/autoload.php';
 
 $cron = Cron\Cronexpr::parse('* * * * *');
 
-echo $a->next()->format('Y-m-d H:i:s');
+echo $cron->next()->format('Y-m-d H:i:s');
 
 ```
 

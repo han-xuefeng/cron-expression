@@ -136,6 +136,9 @@ class Cronexpr {
 				$cronexpr->setDescError($desc);
  				return $cronexpr;
 			}
+		}else{
+			$desc = YearDescriptor::notEnabledFactory();
+			$cronexpr->desc[$desc->name] = $desc;
 		}
 		return $cronexpr;
 
@@ -291,9 +294,6 @@ class Cronexpr {
 
 	public function nextYear(DateTime &$date): DateTime
 	{	
-		if(empty($this->desc['year'])){
-			$this->desc['year'] = new YearDescriptor();
-		}
 		$year = (int)$date->format('Y') + 1;
 		$i = $this->desc['year']->searchInts($year);
 		if($i == $this->desc['year']->getLen()){ //超出所有范围了

@@ -9,6 +9,8 @@ class Descriptor {
 	public const SPAN = 2;
 	public const ALL = 3;
 
+	public $parseError = '';
+
 	public function getMin()
 	{
 		return $this->defaultList ? $this->defaultList[0] : $this->min ;
@@ -63,6 +65,11 @@ class Descriptor {
 		}else{
 			return false;
 		}
+	}
+
+	public function getParseError():string
+	{
+		return $this->parseError;
 	}
 
 }

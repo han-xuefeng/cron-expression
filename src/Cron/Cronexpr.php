@@ -6,6 +6,7 @@ namespace Cron;
 use DateTime;
 use Cron\CronexprParse;
 use Cron\Descriptor\YearDescriptor;
+use Cron\Descriptor\SecondDescriptor;
 
 class Cronexpr {
 
@@ -23,51 +24,32 @@ class Cronexpr {
 	 * @var [string]
 	 */
 	public $cronLine = '';
-	/**
-	 * [$secondList secondList]
-	 * @var array
-	 */
-	public $secondList = [];
-	/**
-	 * [$minuteList minuteList]
-	 * @var array
-	 */
-	public $minuteList = [];
-	/**
-	 * [$hourList hourList]
-	 * @var array
-	 */
-	public $hourList = [];
-	/**
-	 * [$daysOfMonth daysOfMonth]
-	 * @var array
-	 */
-	public $daysOfMonth = [];   //map[int]bool
-	/**
-	 * [$daysOfWeek daysOfWeek]
-	 * @var array
-	 */
-	public $daysOfWeek = []; //map[int]bool
-	/**
-	 * [$monthList monthList]
-	 * @var array
-	 */
-	public $monthList = [];
-	/**
-	 * [$yearList yearList]
-	 * @var array
-	 */
-	public $yearList = [];
 
-
+	public $errorMsg = '';
+	/**
+	 * [$desc 各单位的解释器]
+	 * @var array
+	 */
 	public $desc = [];  //解释器
 
-	public static function factory(): Cronexpr
+	public function __construct(string $cronLine)
 	{
-
+		$this->cronLine = $cronLine;
 	}
 
-
+	public static function mustParse(string $cronLine): Cronexpr
+	{
+		$cronexpr = static::parse($cronLine);
+		if($cronexpr->errorMsg){
+			throw new \Exception($cronexpr->errorMsg);
+		}
+		if(!empty($cronexpr->descError)){
+			foreach ($cronexpr->descError as $key => $value) {
+				throw new \Exception($key . " is not allowed" .$value);
+			}
+		}
+		return $cronexpr;
+	}
 	/**
 	 * 解析cron表达式
 	 * @author woods
@@ -75,109 +57,110 @@ class Cronexpr {
 	 * @param    string                   $cronLine [cron表达式]
 	 * @return   [Cronexpr]                         [Cronexpr]
 	 */
-	public static function parse( string $cronLine, string &$msg = ''): Cronexpr
+	public static function parse(string $cronLine): Cronexpr
 	{
+		$cronexpr = new Cronexpr($cronLine);
 		$cronLineArr = explode(' ', $cronLine);
-
 		$filedCount = count($cronLineArr);
-
 		if($filedCount < 5){
-			$msg = $cronLine.' is not a valid CRON expression';
-			return false;
+			$cronexpr->errorMsg = $cronLine.' is not a valid CRON expression';
+			return $cronexpr;
 		}
 		// 如果大于7，只取前7位
 		if($filedCount > 7){
 			$filedCount = 7;
 		}
-
-		$cronexpr = new static($cronLine);
-		$cronexprParse = new CronexprParse();
 		
+		$cronexprParse = new CronexprParse();
 		//秒
-		if($filedCount === 7){
-			$desc = $cronexprParse->secondFieldHandler(array_shift($cronLineArr));
-			if($desc){
+		if($filedCount >= 6){
+			$desc = $cronexprParse->secondFieldHandler($part = array_shift($cronLineArr));
+			if($desc && $desc->getParseError() === ''){
 				$cronexpr->desc[$desc->name] = $desc;
  			}else{
- 				throw new Exception("不合法");
- 				
+ 				$cronexpr->setDescError($desc);
+ 				return $cronexpr;
  			}
+		}else{
+			$desc = SecondDescriptor::notEnabledFactory();
+			$cronexpr->desc[$desc->name] = $desc;
 		}
 		//分
-		$desc = $cronexprParse->minuteFieldHandler(array_shift($cronLineArr));
-		if($desc){
+		$desc = $cronexprParse->minuteFieldHandler($part = array_shift($cronLineArr));
+		if($desc && $desc->getParseError() === ''){
 			$cronexpr->desc[$desc->name] = $desc;
 		}else{
-			throw new Exception("不合法");
-			
+			$cronexpr->setDescError($desc);
+ 			return $cronexpr;
 		}
 		//时
-		$desc = $cronexprParse->hourFieldHandler(array_shift($cronLineArr));
-		if($desc){
+		$desc = $cronexprParse->hourFieldHandler($part = array_shift($cronLineArr));
+		if($desc && $desc->getParseError() === ''){
 			$cronexpr->desc[$desc->name] = $desc;
 		}else{
-			throw new Exception("不合法");
-			
+			$cronexpr->setDescError($desc);
+ 			return $cronexpr;
 		}
+		
 		//日
-		$desc = $cronexprParse->daymFieldHandler(array_shift($cronLineArr));
-		if($desc){
+		$desc = $cronexprParse->daymFieldHandler($part = array_shift($cronLineArr));
+		if($desc && $desc->getParseError() === ''){
 			$cronexpr->desc[$desc->name] = $desc;
 			$cronexpr->desc[$desc->name]->trueList = $desc->defaultList;
 		}else{
-			throw new Exception("不合法");
-			
+			$cronexpr->setDescError($desc);
+ 			return $cronexpr;
 		}
 		//月
-		$desc = $cronexprParse->mouthFieldHandler(array_shift($cronLineArr));
-		if($desc){
+		$desc = $cronexprParse->mouthFieldHandler($part = array_shift($cronLineArr));
+		if($desc && $desc->getParseError() === ''){
 			$cronexpr->desc[$desc->name] = $desc;
 		}else{
-			throw new Exception("不合法");
-			
+			$cronexpr->setDescError($desc);
+ 			return $cronexpr;	
 		}
 		//周
-		$desc = $cronexprParse->daywFieldHandler(array_shift($cronLineArr));
-		if($desc){
+		$desc = $cronexprParse->daywFieldHandler($part = array_shift($cronLineArr));
+		if($desc && $desc->getParseError() === ''){
 			$cronexpr->desc[$desc->name] = $desc;
 		}else{
-			throw new Exception("不合法");
-			
+			$cronexpr->setDescError($desc);
+ 			return $cronexpr;
 		}
 		//年
 		if($filedCount === 7){
-			$desc = $cronexprParse->yearFieldHandler(array_shift($cronLineArr));
-			if($desc){
+			$desc = $cronexprParse->yearFieldHandler($part = array_shift($cronLineArr));
+			if($desc && $desc->getParseError() === ''){
 				$cronexpr->desc[$desc->name] = $desc;
 			}else{
-				throw new Exception("不合法");
-				
+				$cronexpr->setDescError($desc);
+ 				return $cronexpr;
 			}
 		}
 		return $cronexpr;
 
 	}
 
-
-	public function __construct(string $cronLine)
-	{
-		$this->cronLine = $cronLine;
+	private function setDescError($desc){
+		if($desc && $desc->getParseError()){
+			$this->descError[$desc->name] = $desc->getParseError();
+		}
 	}
-
 
 	public function next()
 	{
 		$date = new \DateTime();
-		
+		if($this->errorMsg !== '' || !empty($this->descError)){
+			return $date;
+		}
 		$year = $date->format('Y');
-
+		$i = $this->desc['year']->searchInts($year);
+		if($i == $this->desc['year']->getLen()){ //超出所有范围了
+			$date = $this->unsetDate($date);
+			return $date;
+		}
 
 		$mouth = $date->format('m');
-		
-		// if($mouth > $this->desc['mouth']->getLast()){
-		// 	return $this->nextYear($date);
-		// }
-		
 		$i = $this->desc['mouth']->searchInts($mouth);
 
 		if($i == $this->desc['mouth']->getLen()){
@@ -219,14 +202,31 @@ class Cronexpr {
 		}
 
 		if($minute != $this->desc['minute']->getIndexDefaultList($i)){
-			return  $this->nextMinute($minute);
+			return  $this->nextMinute($date);
 		}
 
-		// $mi = array_search($mouth,$this->desc['mouth']['defaultList']);
-		// if($mi === false){
-		// 	$this->nextYear($date);
-		// }
-		// if($mouth)
+		if(empty($this->desc['second'])){
+			$this->desc['second'] = new SecondDescriptor();
+		}
+
+		$second = (int)$date->format('s');
+		$i = $this->desc['second']->searchInts($second);
+		if($i == $this->desc['second']->getLen()){
+			return $this->nextMinute($date);
+		}
+		$this->nextSecond($date);
+		return $date;
+	}
+
+	public function nextSecond(DateTime &$date):DateTime
+	{
+		$second = (int)$date->format('s') + 1;
+		$i = $this->desc['second']->searchInts($second);
+		if($i == $this->desc['second']->getLen()){
+			$date->setTime((int)$date->format('H'),(int)$date->format('i'),$second);
+			return $this->nextMinute($date);
+		}
+		$date->setTime((int)$date->format('H'),(int)$date->format('i'),(int)$this->desc['second']->getIndexDefaultList($i));
 		return $date;
 	}
 
@@ -235,10 +235,10 @@ class Cronexpr {
 		$minute = (int)$date->format('i') + 1;
 		$i = $this->desc['minute'] ->searchInts($minute);
 		if($i == $this->desc['minute']->getLen()){
-			$date->setTime((int)$date->format('H'),$minute);
+			$date->setTime((int)$date->format('H'),$minute,(int)$this->desc['second']->getMin());
 			return $this->nextHour($date);
 		}
-		$date->setTime((int)$date->format('H'),(int)$this->desc['minute']->getIndexDefaultList($i));
+		$date->setTime((int)$date->format('H'),(int)$this->desc['minute']->getIndexDefaultList($i),(int)$this->desc['second']->getMin());
 		return $date;
 	}
 
@@ -250,7 +250,7 @@ class Cronexpr {
 			$date->setTime((int)$hour,(int) $this->desc['minute']->getMin());
 			return $this->nextDaym($date);
 		}
-		$date->setTime((int)$this->desc['hour']->getIndexDefaultList($i),(int) $this->desc['minute']->getMin());
+		$date->setTime((int)$this->desc['hour']->getIndexDefaultList($i),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
 		return $date;
 	}
 
@@ -263,7 +263,7 @@ class Cronexpr {
 			return $this->nextMouth($date);
 		}
 		$date->setDate((int)$date->format('Y'),(int)$date->format('m'),(int)$this->desc['daym']->getIndexDefaultList($i));
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin());
+		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
 		return $date;
 	}
 
@@ -285,7 +285,7 @@ class Cronexpr {
 		}
 
 		$date->setDate((int)$date->format('Y'),(int)$this->desc['mouth']->getIndexDefaultList($i),(int)$this->desc['daym']->getMin());
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin());
+		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
 		return $date;
 	}
 
@@ -306,15 +306,14 @@ class Cronexpr {
 			return $this->nextMouth($date);
 		}
 		$date->setDate((int)$this->desc['year']->getIndexDefaultList($i),(int)$this->desc['mouth']->getMin(),(int)$this->desc['daym']->getMin());
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin());
+		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
 		return $date;
 	}
-
-
 	public function unsetDate(DateTime &$date): DateTime
 	{
 		$date->setDate(0,0,0);
 		$date->setTime(0,0,0);
+		return $date;
 	}
 
 }

@@ -13,8 +13,6 @@ use Cron\Descriptor\Descriptor;
 
 class CronexprParse {
 
-
-
 	public function secondFieldHandler(string $part)
 	{
 		$descriptor = new SecondDescriptor();
@@ -75,7 +73,7 @@ class CronexprParse {
 			foreach ($fieldArr as $value) {
 				$checkResutl = $desc->checkRange($value);
 				if(!$checkResutl){
-					throw new Exception($value .'超出合理范围');
+					$desc->parseError = 'Beyond reasonable bounds';
 				}
 			}
 			$desc->kind = $desc::ONE;
@@ -86,7 +84,7 @@ class CronexprParse {
 		if(strpos($part,'-')){
 			$fieldArr = explode('-', $part);
 			if(count($fieldArr) > 2){
-				throw new Exception("不合法");
+				$desc->parseError = 'Unsupported format';
 			}
 			
 			//判断0-23/2
@@ -105,7 +103,7 @@ class CronexprParse {
 		if(strpos($part, '/')){
 			$fieldArr = explode('/', $part);
 			if($fieldArr[0] !== '*'){
-				throw new Exception("不合法");
+				$desc->parseError = 'Unsupported format';
 			}
 
 			$desc->kind = $desc::SPAN;

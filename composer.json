@@ -1,0 +1,23 @@
+{
+    "name": "han-xuefeng/cron-expression",
+    "type": "library",
+    "description": "Calculate the next run date a CRON expression (计算crontab表达式下一个执行日期)",
+    "keywords": ["cron", "schedule"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Han Xuefeng",
+            "email": "han-xuefeng@hotmail.com",
+            "homepage": "https://github.com/han-xuefeng"
+        }
+    ],
+    "require": {
+        "php": "^7.1"
+    },
+    
+    "autoload": {
+        "psr-4": {
+            "Cron\\": "src/Cron/"
+        }
+    },
+}

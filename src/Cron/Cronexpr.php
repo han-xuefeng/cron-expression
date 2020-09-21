@@ -38,6 +38,12 @@ class Cronexpr {
 	 */
 	public $desc = [];  //解释器
 
+	/**
+	 * dateTime
+	 * @var [type]
+	 */
+	public $date;
+
 	public function __construct(string $cronLine,$timeZone = null)
 	{
 		$this->cronLine = $cronLine;
@@ -178,168 +184,96 @@ class Cronexpr {
 
 	public function next($time = 'now')
 	{
-		$date = new \DateTime($time,$this->dateTimeZone);
+		$this->date = new \DateTime($time,$this->dateTimeZone);
 		if($this->errorMsg !== '' || !empty($this->descError)){
-			return $date;
-		}
-		$year = $date->format('Y');
-		$i = $this->desc['year']->searchInts($year);
-		if($i == $this->desc['year']->getLen()){ //超出所有范围了
-			$date = $this->unsetDate($date);
-			return $date;
+			return $this->date;
 		}
 
-		$mouth = $date->format('m');
+		$cronexprParse = new CronexprParse();
+
+		$year = $this->date->format('Y');
+		$i = $this->desc['year']->searchInts($year);
+		if($i == $this->desc['year']->getLen()){ //超出所有范围了
+			$this->unsetDate($this->date);
+			return $this->date;
+		}
+		if($year != $this->desc['year']->getIndexDefaultList($i)){
+			return $cronexprParse ->nextYear($this);
+		}
+
+		$mouth = $this->date->format('m');
 		$i = $this->desc['mouth']->searchInts($mouth);
 
 		if($i == $this->desc['mouth']->getLen()){
-			return $this->nextYear($date);
+			return $cronexprParse->nextYear($this);
 		}
 		if($mouth != $this->desc['mouth']->getIndexDefaultList($i)){
-			return $this->nextMouth($date);
+			return $cronexprParse->nextMouth($this);
 		}
-		$this->desc['daym']->setReal((int) $date->format('Y'),(int)$date->format('m'),$this);
+		$this->desc['daym']->setReal((int) $this->date->format('Y'),(int)$this->date->format('m'),$this);
 		
 		if(empty($this->desc['daym']->getDefaultList())){
-			return $this->nextMouth($date);
+			return $cronexprParse->nextMouth($this);
 		}
 
-		$day = $date->format('d');
+		$day = $this->date->format('d');
 
 		$i = $this->desc['daym']->searchInts($day);
 		if($i == $this->desc['daym']->getLen()){
 			//下一月
-			return $this->nextMouth($date);
+			return $cronexprParse->nextMouth($this);
 		}
 		if($day != $this->desc['daym']->getIndexDefaultList($i)){
-			return $this->nextDaym($date);
+			return $cronexprParse->nextDaym($this);
 		}
 
-		$hour = $date->format('H');
+		$hour = $this->date->format('H');
 		$i = $this->desc['hour']->searchInts($hour);
 		if($i == $this->desc['hour']->getLen()){
-			return $this->nextDaym($date);
+			return $cronexprParse->nextDaym($this);
 		}
 		if($hour != $this->desc['hour']->getIndexDefaultList($i)){
-			return $this->nextHour($date);
+			return $cronexprParse->nextHour($this);
 		}
 
-		$minute = $date->format('i');
+		$minute = $this->date->format('i');
 		$i = $this->desc['minute'] ->searchInts($minute);
 		if($i == $this->desc['minute']->getLen()){
-			return $this->nextHour($date);
+			return $cronexprParse->nextHour($this);
 		}
 
 		if($minute != $this->desc['minute']->getIndexDefaultList($i)){
-			return  $this->nextMinute($date);
+			return  $cronexprParse->nextMinute($this);
 		}
 
 		if(empty($this->desc['second'])){
 			$this->desc['second'] = new SecondDescriptor();
 		}
 
-		$second = (int)$date->format('s');
+		$second = (int)$this->date->format('s');
 		$i = $this->desc['second']->searchInts($second);
 		if($i == $this->desc['second']->getLen()){
-			return $this->nextMinute($date);
+			return $cronexprParse->nextMinute($this);
 		}
-		$this->nextSecond($date);
-		return $date;
+		$cronexprParse->nextSecond($this);
+		return $this->date;
 	}
-
-	public function nextSecond(DateTime &$date):DateTime
-	{
-		$second = (int)$date->format('s') + 1;
-		$i = $this->desc['second']->searchInts($second);
-		if($i == $this->desc['second']->getLen()){
-			$date->setTime((int)$date->format('H'),(int)$date->format('i'),$second);
-			return $this->nextMinute($date);
-		}
-		$date->setTime((int)$date->format('H'),(int)$date->format('i'),(int)$this->desc['second']->getIndexDefaultList($i));
-		return $date;
-	}
-
-	public function nextMinute(DateTime &$date): DateTime
-	{
-		$minute = (int)$date->format('i') + 1;
-		$i = $this->desc['minute'] ->searchInts($minute);
-		if($i == $this->desc['minute']->getLen()){
-			$date->setTime((int)$date->format('H'),$minute,(int)$this->desc['second']->getMin());
-			return $this->nextHour($date);
-		}
-		$date->setTime((int)$date->format('H'),(int)$this->desc['minute']->getIndexDefaultList($i),(int)$this->desc['second']->getMin());
-		return $date;
-	}
-
-	public function nextHour(DateTime &$date): DateTime
-	{
-		$hour = (int)$date->format('H') + 1;
-		$i = $this->desc['hour']->searchInts($hour);
-		if($i == $this->desc['hour']->getLen()){
-			$date->setTime((int)$hour,(int) $this->desc['minute']->getMin());
-			return $this->nextDaym($date);
-		}
-		$date->setTime((int)$this->desc['hour']->getIndexDefaultList($i),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
-		return $date;
-	}
-
-	public function nextDaym(DateTime &$date): DateTime
-	{
-		$daym = (int)$date->format('d') + 1;
-		$i = $this->desc['daym']->searchInts($daym);
-		if($i == $this->desc['daym']->getLen()){
-			$date->setDate((int)$date->format('Y'),(int)$date->format('m'),$daym);
-			return $this->nextMouth($date);
-		}
-		$date->setDate((int)$date->format('Y'),(int)$date->format('m'),(int)$this->desc['daym']->getIndexDefaultList($i));
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
-		return $date;
-	}
-
-	public function nextMouth(DateTime &$date): DateTime
-	{
-		$mouth = (int)$date->format('m') + 1;
-
-		$i = $this->desc['mouth']->searchInts($mouth);
-
-		if($i == $this->desc['mouth']->getLen()){ //超出所有范围了
-			$date->setDate((int)$date->format('Y'),(int)$mouth,(int)$this->desc['daym']->getMin());
-			return $this->nextYear($date);
-		}
-		$this->desc['daym']->setReal((int) $date->format('Y'),$mouth,$this);
-
-		if(empty($this->desc['daym']->getDefaultList())){
-			$date->setDate((int)$date->format('Y'),(int)$mouth,(int)$this->desc['daym']->getMin());
-			return $this->nextMouth($date);
-		}
-
-		$date->setDate((int)$date->format('Y'),(int)$this->desc['mouth']->getIndexDefaultList($i),(int)$this->desc['daym']->getMin());
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
-		return $date;
-	}
-
-	public function nextYear(DateTime &$date): DateTime
-	{	
-		$year = (int)$date->format('Y') + 1;
-		$i = $this->desc['year']->searchInts($year);
-		if($i == $this->desc['year']->getLen()){ //超出所有范围了
-			$date = $this->unsetDate($date);
-			return $date;
-		}
-		$this->desc['daym']->setReal($year, (int)$this->desc['mouth']->getMin(),$this);
-		if(empty($this->desc['daym']->getDefaultList())){
-			$date->setDate((int)$year,(int)$date->format('m') + 1,(int)$this->desc['daym']->getMin());
-			return $this->nextMouth($date);
-		}
-		$date->setDate((int)$this->desc['year']->getIndexDefaultList($i),(int)$this->desc['mouth']->getMin(),(int)$this->desc['daym']->getMin());
-		$date->setTime((int) $this->desc['hour']->getMin(),(int) $this->desc['minute']->getMin(),(int)$this->desc['second']->getMin());
-		return $date;
-	}
-	public function unsetDate(DateTime &$date): DateTime
+	
+	private function unsetDate(DateTime &$date)
 	{
 		$date->setDate(0,0,0);
 		$date->setTime(0,0,0);
-		return $date;
+	}
+
+	public function nextN(int $n, $time = 'now'):array
+	{
+		$nextArr = [];
+		for($i = 1; $i <= $n; $i++ ){
+
+			$nextArr[$i] = $this->next(($this->date ? $this->date->format('Y-m-d H:i:s') : $time));
+		}
+
+		return $nextArr;
 	}
 
 }

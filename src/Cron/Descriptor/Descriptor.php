@@ -21,8 +21,8 @@ class Descriptor {
 		return $this->defaultList;
 	}
 
-	public function getIndexDefaultList($i){
-
+	public function getIndexDefaultList($i)
+	{
 		return $this->defaultList[$i];
 	}
 
@@ -40,6 +40,9 @@ class Descriptor {
 		
 		if($filed > $this->getLast()){
 			return $this->getLen();
+		}
+		if($filed < $this->getMin()){
+			return 0;
 		}
 		/**todo	*/
 		if($this->getLen() === 1){

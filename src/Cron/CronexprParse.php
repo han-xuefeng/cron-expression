@@ -2,6 +2,8 @@
 
 namespace Cron;
 
+use DateTime;
+use Cron\Cronexpr;
 use Cron\Descriptor\SecondDescriptor;
 use Cron\Descriptor\MinuteDescriptor;
 use Cron\Descriptor\HourDescriptor;
@@ -115,6 +117,95 @@ class CronexprParse {
 		$desc->kind = $desc::ONE;
 		$desc->defaultList = [$part];
 		return $desc;
+	}
+
+	public function nextYear(Cronexpr &$cronexpr): DateTime
+	{	
+		$year = (int)$cronexpr->date->format('Y') + 1;
+		$i = $cronexpr->desc['year']->searchInts($year);
+		if($i == $cronexpr->desc['year']->getLen()){ //超出所有范围了
+			$cronexpr->date = $cronexpr->unsetDate($cronexpr->date);
+			return $cronexpr->date;
+		}
+		$cronexpr->desc['daym']->setReal($year, (int)$cronexpr->desc['mouth']->getMin(),$cronexpr);
+		if(empty($cronexpr->desc['daym']->getDefaultList())){
+			$cronexpr->date->setDate((int)$year,(int)$cronexpr->date->format('m') + 1,(int)$cronexpr->desc['daym']->getMin());
+			return $this->nextMouth($cronexpr);
+		}
+		$cronexpr->date->setDate((int)$cronexpr->desc['year']->getIndexDefaultList($i),(int)$cronexpr->desc['mouth']->getMin(),(int)$cronexpr->desc['daym']->getMin());
+		$cronexpr->date->setTime((int) $cronexpr->desc['hour']->getMin(),(int) $cronexpr->desc['minute']->getMin(),(int)$cronexpr->desc['second']->getMin());
+		return $cronexpr->date;
+	}
+
+	public function nextMouth(Cronexpr &$cronexpr): DateTime
+	{
+		$mouth = (int)$cronexpr->date->format('m') + 1;
+
+		$i = $cronexpr->desc['mouth']->searchInts($mouth);
+
+		if($i == $cronexpr->desc['mouth']->getLen()){ //超出所有范围了
+			$cronexpr->date->setDate((int)$cronexpr->date->format('Y'),(int)$mouth,(int)$cronexpr->desc['daym']->getMin());
+			return $this->nextYear($cronexpr);
+		}
+		$cronexpr->desc['daym']->setReal((int) $cronexpr->date->format('Y'),$mouth,$cronexpr);
+
+		if(empty($cronexpr->desc['daym']->getDefaultList())){
+			$cronexpr->date->setDate((int)$cronexpr->date->format('Y'),(int)$mouth,(int)$cronexpr->desc['daym']->getMin());
+			return $this->nextMouth($cronexpr);
+		}
+
+		$cronexpr->date->setDate((int)$cronexpr->date->format('Y'),(int)$cronexpr->desc['mouth']->getIndexDefaultList($i),(int)$cronexpr->desc['daym']->getMin());
+		$cronexpr->date->setTime((int) $cronexpr->desc['hour']->getMin(),(int) $cronexpr->desc['minute']->getMin(),(int)$cronexpr->desc['second']->getMin());
+		return $cronexpr->date;
+	}
+
+	public function nextDaym(Cronexpr &$cronexpr): DateTime
+	{
+		$daym = (int)$cronexpr->date->format('d') + 1;
+		$i = $cronexpr->desc['daym']->searchInts($daym);
+		if($i == $cronexpr->desc['daym']->getLen()){
+			$cronexpr->date->setDate((int)$cronexpr->date->format('Y'),(int)$cronexpr->date->format('m'),$daym);
+			return $this->nextMouth($cronexpr);
+		}
+		$cronexpr->date->setDate((int)$cronexpr->date->format('Y'),(int)$cronexpr->date->format('m'),(int)$cronexpr->desc['daym']->getIndexDefaultList($i));
+		$cronexpr->date->setTime((int) $cronexpr->desc['hour']->getMin(),(int) $cronexpr->desc['minute']->getMin(),(int)$cronexpr->desc['second']->getMin());
+		return $cronexpr->date;
+	}
+
+	public function nextMinute(Cronexpr &$cronexpr): DateTime
+	{
+		$minute = (int)$cronexpr->date->format('i') + 1;
+		$i = $cronexpr->desc['minute'] ->searchInts($minute);
+		if($i == $cronexpr->desc['minute']->getLen()){
+			$cronexpr->date->setTime((int)$cronexpr->date->format('H'),$minute,(int)$cronexpr->desc['second']->getMin());
+			return $this->nextHour($cronexpr);
+		}
+		$cronexpr->date->setTime((int)$cronexpr->date->format('H'),(int)$cronexpr->desc['minute']->getIndexDefaultList($i),(int)$cronexpr->desc['second']->getMin());
+		return $cronexpr->date;
+	}
+
+	public function nextHour(Cronexpr &$cronexpr): DateTime
+	{
+		$hour = (int)$cronexpr->date->format('H') + 1;
+		$i = $cronexpr->desc['hour']->searchInts($hour);
+		if($i == $cronexpr->desc['hour']->getLen()){
+			$cronexpr->date->setTime((int)$hour,(int) $cronexpr->desc['minute']->getMin());
+			return $this->nextDaym($cronexpr);
+		}
+		$cronexpr->date->setTime((int)$cronexpr->desc['hour']->getIndexDefaultList($i),(int) $cronexpr->desc['minute']->getMin(),(int)$cronexpr->desc['second']->getMin());
+		return $cronexpr->date;
+	}
+
+	public function nextSecond(Cronexpr &$cronexpr):DateTime
+	{
+		$second = (int)$cronexpr->date->format('s') + 1;
+		$i = $cronexpr->desc['second']->searchInts($second);
+		if($i == $cronexpr->desc['second']->getLen()){
+			$cronexpr->date->setTime((int)$cronexpr->date->format('H'),(int)$cronexpr->date->format('i'),$second);
+			return $this->nextMinute($cronexpr);
+		}
+		$cronexpr->date->setTime((int)$cronexpr->date->format('H'),(int)$cronexpr->date->format('i'),(int)$cronexpr->desc['second']->getIndexDefaultList($i));
+		return $cronexpr->date;
 	}
 
 }

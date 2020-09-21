@@ -2,7 +2,7 @@
     "name": "han-xuefeng/cron-expression",
     "type": "library",
     "description": "Calculate the next run date a CRON expression. Support years and seconds (计算crontab表达式下一个执行日期，支持年和秒)",
-    "keywords": ["cron", "schedule"],
+    "keywords": ["cron","cronexpr","crontab","cron-expression","crontab expression","schedule"],
     "license": "MIT",
     "authors": [
         {

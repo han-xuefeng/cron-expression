@@ -4,20 +4,12 @@ declare(strict_types=1);
 
 namespace Cron;
 use DateTime;
+use DateTimeZone;
 use Cron\CronexprParse;
 use Cron\Descriptor\YearDescriptor;
 use Cron\Descriptor\SecondDescriptor;
 
 class Cronexpr {
-
-	public const SECONDS = 0; 
-    public const MINUTE = 1;
-    public const HOUR = 2;
-    public const DAY = 3;
-    public const MONTH = 4;
-    public const WEEKDAY = 5;
-    public const YEAR = 6;
-
 
 	/**
 	 * [$cronLine cron表达式]
@@ -25,19 +17,47 @@ class Cronexpr {
 	 */
 	public $cronLine = '';
 
+	/**
+	 * 表达式错误
+	 * @var string
+	 */
 	public $errorMsg = '';
+	/**
+	 * 表达式对应部分错误
+	 * @var array
+	 */
+	public $descError = [];
+	/**
+	 * 时区 默认系统时区
+	 * @var [type]
+	 */
+	public $dateTimeZone;
 	/**
 	 * [$desc 各单位的解释器]
 	 * @var array
 	 */
 	public $desc = [];  //解释器
 
-	public function __construct(string $cronLine)
+	public function __construct(string $cronLine,$timeZone = null)
 	{
 		$this->cronLine = $cronLine;
+		if($timeZone){
+			$timeZone = new DateTimeZone($timeZone);
+		}else{
+			$timeZone = new DateTimeZone(date_default_timezone_get());
+		}
+		$this->dateTimeZone = $timeZone; 
 	}
 
-	public static function mustParse(string $cronLine): Cronexpr
+
+	/**
+	 * 强制解析cron-expression 
+	 * @author woods
+	 * @DateTime 2020-09-21T20:57:44+0800
+	 * @param    string                   $cronLine [description]
+	 * @return   [type]                             [description]
+	 */
+	public static function mustParse(string $cronLine, $timeZone = null): Cronexpr
 	{
 		$cronexpr = static::parse($cronLine);
 		if($cronexpr->errorMsg){
@@ -50,6 +70,12 @@ class Cronexpr {
 		}
 		return $cronexpr;
 	}
+
+	public function setDateTimeZone($timeZone)
+	{
+		$this->dateTimeZone = new DateTimeZone($timeZone);
+	}
+
 	/**
 	 * 解析cron表达式
 	 * @author woods
@@ -57,9 +83,9 @@ class Cronexpr {
 	 * @param    string                   $cronLine [cron表达式]
 	 * @return   [Cronexpr]                         [Cronexpr]
 	 */
-	public static function parse(string $cronLine): Cronexpr
+	public static function parse(string $cronLine,$timeZone = null): Cronexpr
 	{
-		$cronexpr = new Cronexpr($cronLine);
+		$cronexpr = new Cronexpr($cronLine, $timeZone);
 		$cronLineArr = explode(' ', $cronLine);
 		$filedCount = count($cronLineArr);
 		if($filedCount < 5){
@@ -150,9 +176,9 @@ class Cronexpr {
 		}
 	}
 
-	public function next()
+	public function next($time = 'now')
 	{
-		$date = new \DateTime();
+		$date = new \DateTime($time,$this->dateTimeZone);
 		if($this->errorMsg !== '' || !empty($this->descError)){
 			return $date;
 		}
